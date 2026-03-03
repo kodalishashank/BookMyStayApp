@@ -8,3 +8,4 @@ public class UseCase1HotelBookingApp {
         System.out.println("System initialized... Application is now running.");
     }
 }
+
