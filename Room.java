@@ -11,8 +11,8 @@ public abstract class Room {
     }
 
     public void displayRoomDetails() {
-        System.out.println(" - Beds: " + numberOfBeds);
-        System.out.println(" - Size: " + squareFeet + " sq ft");
-        System.out.println(" - Price: $" + pricePerNight + " per night");
+        System.out.println("Beds: " + numberOfBeds);
+        System.out.println("Size: " + squareFeet + " sqft");
+        System.out.println("Price per night: " + pricePerNight);
     }
 }
