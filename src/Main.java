@@ -1,6 +1,6 @@
 import java.util.*;
 
-public class UseCaseBookMyStay {
+public class Main{
 
     public static void main(String[] args) {
 
@@ -184,3 +184,4 @@ class RoomAllocationService {
         return baseId + nextId;
     }
 }
+
