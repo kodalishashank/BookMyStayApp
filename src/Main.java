@@ -1,111 +1,92 @@
 import java.util.*;
 
 /**
- * Use Case 9: Error Handling & Validation
- * Custom exception represents invalid booking scenarios.
+ * Use Case 10: Room Cancellation Service
+ * Handles the logic for releasing rooms and updating inventory.
  */
-class InvalidBookingException extends Exception {
-    public InvalidBookingException(String message) {
-        super(message);
-    }
-}
+class RoomCancellationService {
 
-/**
- * Use Case 9: Reservation Validator
- * Centralizes validation rules for guest names and room types.
- */
-class ReservationValidator {
-    public void validate(String guestName, String roomType, RoomInventory inventory) 
-            throws InvalidBookingException {
+    public void cancelBooking(
+            String reservationId, 
+            String roomType, 
+            RoomInventory inventory, 
+            AddOnServiceManager serviceManager) {
         
-        // Check if guest name is valid
-        if (guestName == null || guestName.trim().isEmpty()) {
-            throw new InvalidBookingException("Guest name cannot be empty.");
-        }
+        System.out.println("Processing cancellation for Reservation ID: " + reservationId);
 
-        // Case-sensitive validation check as per image d50c7a requirements
-        // System expects "Single", "Double", or "Suite"
-        List<String> validTypes = Arrays.asList("Single", "Double", "Suite");
-        if (!validTypes.contains(roomType)) {
-            throw new InvalidBookingException("Invalid room type selected.");
-        }
+        // 1. Update Inventory (Use Case 10 requirement)
+        inventory.releaseRoom(roomType);
 
-        // Check if room type actually exists in inventory and has stock
-        if (!inventory.hasAvailability(roomType + " Room")) {
-            throw new InvalidBookingException("No availability for the selected room type.");
-        }
+        // 2. Clear associated services (Clean-up)
+        serviceManager.removeServices(reservationId);
+
+        System.out.println("Cancellation successful. Room type '" + roomType + "' is now available.");
+        System.out.println("--------------------------------------");
     }
 }
 
 public class Main {
     public static void main(String[] args) {
         System.out.println("======================================");
-        System.out.println("      Booking Validation System");
-        System.out.println("      Hotel Booking System v9.0");
+        System.out.println("      Hotel Management System v10.0");
+        System.out.println("      Cancellation & Inventory Management");
         System.out.println("======================================");
 
-        Scanner scanner = new Scanner(System.in);
-        
-        // Initialize Components
+        // Initialize Services
         RoomInventory inventory = new RoomInventory();
-        inventory.addRooms("Single Room", 2);
-        inventory.addRooms("Double Room", 2);
+        AddOnServiceManager serviceManager = new AddOnServiceManager();
+        RoomCancellationService cancellationService = new RoomCancellationService();
+
+        // Setup initial inventory
+        inventory.addRooms("Single Room", 1);
         
-        ReservationValidator validator = new ReservationValidator();
-        BookingRequestQueue requestQueue = new BookingRequestQueue();
-        BookingHistory history = new BookingHistory();
+        // Simulate an existing booking for "Abhisheak"
+        String resId = "Single-101";
+        System.out.println("Initial State: Room Single-101 is occupied.");
+        serviceManager.addService(resId, new AddOnService("Spa", 1500.0));
 
-        try {
-            // Get user input (Use Case 9)
-            System.out.print("Enter guest name: ");
-            String name = scanner.nextLine();
+        // Perform Cancellation (Use Case 10)
+        cancellationService.cancelBooking(resId, "Single Room", inventory, serviceManager);
 
-            System.out.print("Enter room type (Single/Double/Suite): ");
-            String type = scanner.nextLine();
-
-            // Validate Input
-            validator.validate(name, type, inventory);
-
-            // If validation passes, proceed with booking
-            Reservation res = new Reservation("R" + (int)(Math.random()*1000), name, type + " Room");
-            requestQueue.addRequest(res);
-            
-            System.out.println("Booking successful for " + name);
-            history.addReservation(res);
-
-        } catch (InvalidBookingException e) {
-            // Handle domain-specific validation errors
-            System.out.println("Booking failed: " + e.getMessage());
-        } finally {
-            // Clean up resources
-            scanner.close();
-        }
+        // Verify Inventory Update
+        System.out.println("Verification: Has Single Room availability? " + inventory.hasAvailability("Single Room"));
     }
 }
 
-// --- Supporting Classes from Previous Use Cases ---
-
-class Reservation {
-    private String id, name, type;
-    public Reservation(String id, String name, String type) {
-        this.id = id; this.name = name; this.type = type;
-    }
-    public String getGuestName() { return name; }
-    public String getRoomType() { return type; }
-}
-
-class BookingRequestQueue {
-    private Queue<Reservation> queue = new LinkedList<>();
-    public void addRequest(Reservation r) { queue.add(r); }
-}
+// --- Updated Classes for Use Case 10 ---
 
 class RoomInventory {
-    private Map<String, Integer> rooms = new HashMap<>();
-    public void addRooms(String type, int count) { rooms.put(type, count); }
-    public boolean hasAvailability(String type) { return rooms.getOrDefault(type, 0) > 0; }
+    private Map<String, Integer> availableRooms = new HashMap<>();
+
+    public void addRooms(String type, int count) { availableRooms.put(type, count); }
+    
+    public boolean hasAvailability(String type) { 
+        return availableRooms.getOrDefault(type, 0) > 0; 
+    }
+
+    // New method for Use Case 10
+    public void releaseRoom(String type) {
+        int current = availableRooms.getOrDefault(type, 0);
+        availableRooms.put(type, current + 1);
+    }
 }
 
-class BookingHistory {
-    private List<Reservation> list = new ArrayList<>();
-    public void addReservation(Reservation r) { list.add(r); }
+class AddOnServiceManager {
+    private Map<String, List<AddOnService>> servicesByReservation = new HashMap<>();
+
+    public void addService(String resId, AddOnService s) {
+        servicesByReservation.computeIfAbsent(resId, k -> new ArrayList<>()).add(s);
+    }
+
+    // New method for clean-up during cancellation
+    public void removeServices(String resId) {
+        servicesByReservation.remove(resId);
+    }
+}
+
+// --- Use Case 7 Class ---
+class AddOnService {
+    private String name;
+    private double cost;
+    public AddOnService(String name, double cost) { this.name = name; this.cost = cost; }
 }
