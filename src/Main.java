@@ -152,3 +152,4 @@ class RoomAllocationService {
         return baseId + nextId;
     }
 }
+
