@@ -4,95 +4,109 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("======================================");
         System.out.println("      Welcome to Book My Stay");
-        System.out.println("      Hotel Booking System v7.0");
+        System.out.println("      Hotel Booking System v8.0");
         System.out.println("======================================");
 
         // 1. Initialize core services
         BookingRequestQueue requestQueue = new BookingRequestQueue();
         RoomInventory roomInventory = new RoomInventory();
         RoomAllocationService allocationService = new RoomAllocationService();
-        
-        // 2. Initialize Use Case 7: Add-On Service Manager
         AddOnServiceManager serviceManager = new AddOnServiceManager();
 
+        // 2. Initialize Use Case 8: History and Reporting
+        BookingHistory history = new BookingHistory();
+        BookingReportService reportService = new BookingReportService();
+
+        // Setup Inventory
         roomInventory.addRooms("Single Room", 2);
         roomInventory.addRooms("Double Room", 2);
+        roomInventory.addRooms("Suite Room", 1);
 
-        // Simulate incoming booking requests
-        requestQueue.addRequest(new Reservation("R001", "Alice", "Single Room"));
-        requestQueue.addRequest(new Reservation("R004", "Diana", "Double Room"));
+        // Simulate incoming booking requests (Using names from provided image)
+        requestQueue.addRequest(new Reservation("R101", "Abhi", "Single Room"));
+        requestQueue.addRequest(new Reservation("R102", "Subha", "Double Room"));
+        requestQueue.addRequest(new Reservation("R103", "Vanmathi", "Suite Room"));
 
-        System.out.println("\nProcessing bookings and selecting Add-On Services...\n");
+        System.out.println("\nProcessing bookings and recording history...\n");
 
         while (!requestQueue.isEmpty()) {
             Reservation reservation = requestQueue.pollRequest();
             if (reservation != null) {
-                // Allocate the room first
+                // Allocate the room
                 String allocatedRoomId = allocationService.allocateRoom(reservation, roomInventory);
                 
-                // If allocation was successful, simulate Add-On Service Selection (Use Case 7)
+                // If allocation was successful, save to history
                 if (allocatedRoomId != null) {
-                    // Example: Adding Spa and Breakfast for Alice
-                    if (reservation.getGuestName().equals("Alice")) {
-                        serviceManager.addService(allocatedRoomId, new AddOnService("Breakfast", 500.0));
-                        serviceManager.addService(allocatedRoomId, new AddOnService("Spa", 1000.0));
-                    }
+                    history.addReservation(reservation);
                     
-                    // Display totals for the specific room/reservation
-                    System.out.println("Add-On Service Selection");
-                    System.out.println("Reservation ID: " + allocatedRoomId);
-                    System.out.println("Total Add-On Cost: " + serviceManager.calculateTotalServiceCost(allocatedRoomId));
-                    System.out.println("--------------------------------------");
+                    // Optional: Add-on services from Use Case 7
+                    if (reservation.getGuestName().equals("Abhi")) {
+                        serviceManager.addService(allocatedRoomId, new AddOnService("Breakfast", 500.0));
+                    }
                 }
             }
+        }
+
+        // 3. Generate the Final Report (Use Case 8)
+        System.out.println("\nBooking History and Reporting");
+        reportService.generateReport(history);
+    }
+}
+
+/**
+ * Use Case 8: Booking History
+ * Maintains an ordered record of confirmed reservations.
+ */
+class BookingHistory {
+    private List<Reservation> confirmedReservations;
+
+    public BookingHistory() {
+        this.confirmedReservations = new ArrayList<>();
+    }
+
+    public void addReservation(Reservation reservation) {
+        confirmedReservations.add(reservation);
+    }
+
+    public List<Reservation> getConfirmedReservations() {
+        return confirmedReservations;
+    }
+}
+
+/**
+ * Use Case 8: Booking Report Service
+ * Separates reporting logic from data storage.
+ */
+class BookingReportService {
+    public void generateReport(BookingHistory history) {
+        System.out.println("Booking History Report");
+        for (Reservation res : history.getConfirmedReservations()) {
+            System.out.println("Guest: " + res.getGuestName() + 
+                               ", Room Type: " + res.getRoomType());
         }
     }
 }
 
-/** * Use Case 7: Add-On Service Class
- * Represents an optional service like Spa, Breakfast, etc.
- */
+// --- Use Case 7: Add-On Service Classes ---
+
 class AddOnService {
     private String serviceName;
     private double cost;
-
     public AddOnService(String serviceName, double cost) {
         this.serviceName = serviceName;
         this.cost = cost;
     }
-
-    public String getServiceName() { return serviceName; }
     public double getCost() { return cost; }
 }
 
-/**
- * Use Case 7: Add-On Service Manager
- * Maps reservation/room IDs to a list of selected services.
- */
 class AddOnServiceManager {
-    private Map<String, List<AddOnService>> servicesByReservation;
-
-    public AddOnServiceManager() {
-        this.servicesByReservation = new HashMap<>();
-    }
-
-    public void addService(String reservationId, AddOnService service) {
-        servicesByReservation
-            .computeIfAbsent(reservationId, k -> new ArrayList<>())
-            .add(service);
-    }
-
-    public double calculateTotalServiceCost(String reservationId) {
-        List<AddOnService> services = servicesByReservation.getOrDefault(reservationId, Collections.emptyList());
-        double total = 0;
-        for (AddOnService s : services) {
-            total += s.getCost();
-        }
-        return total;
+    private Map<String, List<AddOnService>> servicesByReservation = new HashMap<>();
+    public void addService(String resId, AddOnService s) {
+        servicesByReservation.computeIfAbsent(resId, k -> new ArrayList<>()).add(s);
     }
 }
 
-// --- Existing Classes with Minor Updates for Integration ---
+// --- Core Core Logic Classes ---
 
 class Reservation {
     private String reservationId;
@@ -104,8 +118,6 @@ class Reservation {
         this.guestName = guestName;
         this.roomType = roomType;
     }
-
-    public String getReservationId() { return reservationId; }
     public String getGuestName() { return guestName; }
     public String getRoomType() { return roomType; }
 }
@@ -121,35 +133,18 @@ class RoomInventory {
     private Map<String, Integer> availableRooms = new HashMap<>();
     public void addRooms(String type, int count) { availableRooms.put(type, count); }
     public boolean hasAvailability(String type) { return availableRooms.getOrDefault(type, 0) > 0; }
-    public void allocateRoom(String type) {
-        availableRooms.put(type, availableRooms.get(type) - 1);
-    }
+    public void allocateRoom(String type) { availableRooms.put(type, availableRooms.get(type) - 1); }
 }
 
 class RoomAllocationService {
-    private Map<String, Set<String>> assignedRoomsByType = new HashMap<>();
-
     public String allocateRoom(Reservation reservation, RoomInventory inventory) {
-        String roomType = reservation.getRoomType();
-        if (!inventory.hasAvailability(roomType)) {
-            System.out.println("No availability for " + roomType);
-            return null;
+        String type = reservation.getRoomType();
+        if (inventory.hasAvailability(type)) {
+            inventory.allocateRoom(type);
+            String id = type.replace(" ", "") + "-Confirmed";
+            System.out.println("Room allocated for guest " + reservation.getGuestName());
+            return id;
         }
-
-        String roomId = generateRoomId(roomType);
-        assignedRoomsByType.computeIfAbsent(roomType, k -> new HashSet<>()).add(roomId);
-        inventory.allocateRoom(roomType);
-        
-        System.out.println("Room allocated: " + roomId + " for guest " + reservation.getGuestName());
-        return roomId;
-    }
-
-    private String generateRoomId(String roomType) {
-        Set<String> assignedIds = assignedRoomsByType.getOrDefault(roomType, Collections.emptySet());
-        int nextId = 1;
-        String baseId = roomType.replaceAll("\\s", "") + "-";
-        while (assignedIds.contains(baseId + nextId)) { nextId++; }
-        return baseId + nextId;
+        return null;
     }
 }
-
